@@ -1,0 +1,61 @@
+version: "3.8"
+
+# TradeCore Africa — Local Development
+# Runs the full stack locally for development and testing
+# The Cloud team replaces this with ECS + RDS in production
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB:       tradecore
+      POSTGRES_USER:     tradecore
+      POSTGRES_PASSWORD: tradecore_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tradecore"]
+      interval: 5s
+      timeout:  5s
+      retries:  5
+
+  api:
+    build: ./backend
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV:    development
+      PORT:        4000
+      DB_HOST:     db
+      DB_PORT:     5432
+      DB_NAME:     tradecore
+      DB_USER:     tradecore
+      DB_PASSWORD: tradecore_dev
+      DB_SSL:      "false"
+      JWT_SECRET:  dev_jwt_secret_replace_in_production
+      FRONTEND_URL: http://localhost:3001
+      APP_VERSION: 1.0.0
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    environment:
+      VITE_API_URL: http://localhost:4000
+    command: sh -c "npm install && npm run dev -- --host"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
