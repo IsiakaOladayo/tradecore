@@ -24,6 +24,10 @@ jobs:
     name: Test and Build Backend
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write   # Required to request the JWT token from AWS
+      contents: read    # Required for actions/checkout
+
     defaults:
       run:
         working-directory: ./tradecore/backend
@@ -36,7 +40,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: tradecore/backend/package-lock.json
 
