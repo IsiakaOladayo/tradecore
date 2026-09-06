@@ -1,4 +1,4 @@
-name: TradeCore CI/CD
+name: Backend CI
 
 on:
   push:
@@ -11,15 +11,7 @@ on:
       - develop
       - main
 
-env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
-  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
-  ECS_TASK_DEFINITION: ${{ vars.ECS_TASK_DEFINITION }}
-
 jobs:
-
   test-and-build:
     name: Test and Build Backend
     runs-on: ubuntu-latest
@@ -29,7 +21,6 @@ jobs:
         working-directory: ./tradecore/backend
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -60,28 +51,3 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
-
-      - name: Configure AWS credentials
-        if: github.event_name == 'push'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-
-      - name: Login to Amazon ECR
-        if: github.event_name == 'push'
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Push image to ECR
-        if: github.event_name == 'push'
-        env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker tag \
-            tradecore-api:${IMAGE_TAG} \
-            ${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
-
-          docker push \
-            ${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
