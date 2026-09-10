@@ -11,37 +11,33 @@ on:
       - develop
       - main
 
+permissions:
+  contents: read
+  id-token: write
+
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
-  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
-  ECS_TASK_DEFINITION: ${{ vars.ECS_TASK_DEFINITION }}
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+  AWS_REGION: af-south-1
+  ECR_REGISTRY: 987292390922.dkr.ecr.af-south-1.amazonaws.com
+  ECR_REPOSITORY: tradecore-production
+  ECS_CLUSTER: tradecore-production
 
 jobs:
-
   test-and-build:
-    name: Test and Build Backend
+    name: Test, Build and Scan
     runs-on: ubuntu-latest
-
-    permissions:
-      id-token: write   # Required to request the JWT token from AWS
-      contents: read    # Required for actions/checkout
 
     defaults:
       run:
         working-directory: ./tradecore/backend
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
           cache: npm
           cache-dependency-path: tradecore/backend/package-lock.json
 
@@ -56,37 +52,147 @@ jobs:
           docker build \
             -t tradecore-api:${{ github.sha }} \
             .
- 
+
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: tradecore-api:${{ github.sha }}
           format: table
-          exit-code: "0"
+          exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
 
+  push-image:
+    name: Push Image to ECR
+    needs: test-and-build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials
-        if: github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::987292390922:role/tradecore-production-github-actions
 
       - name: Login to Amazon ECR
-        if: github.event_name == 'push'
-        id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Push image to ECR
-        if: github.event_name == 'push'
-        env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+      - name: Build Docker image
+        working-directory: ./tradecore/backend
         run: |
-          docker tag \
-            tradecore-api:${IMAGE_TAG} \
-            ${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+          docker build \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
+            .
 
+      - name: Push Docker image
+        run: |
           docker push \
-            ${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+            $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+  deploy:
+    name: Deploy to ECS
+    needs: push-image
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::987292390922:role/tradecore-production-github-actions
+
+      - name: Get ECS service
+        id: ecs
+        run: |
+          SERVICE=$(aws ecs list-services \
+            --cluster "$ECS_CLUSTER" \
+            --query 'serviceArns[0]' \
+            --output text)
+
+          echo "service=$SERVICE" >> "$GITHUB_OUTPUT"
+
+          echo "ECS service:"
+          echo "$SERVICE"
+
+      - name: Get current task definition
+        id: task
+        run: |
+          TASK_DEF=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "${{ steps.ecs.outputs.service }}" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          echo "task_definition=$TASK_DEF" >> "$GITHUB_OUTPUT"
+
+          echo "Task definition:"
+          echo "$TASK_DEF"
+
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "${{ steps.task.outputs.task_definition }}" \
+            --query taskDefinition \
+            --output json > task-definition.json
+
+      - name: Update container image
+        run: |
+          IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
+
+          jq \
+            --arg IMAGE "$IMAGE" \
+            '.containerDefinitions[0].image = $IMAGE |
+             del(
+               .taskDefinitionArn,
+               .revision,
+               .status,
+               .requiresAttributes,
+               .compatibilities,
+               .registeredAt,
+               .registeredBy
+             )' \
+            task-definition.json > task-definition-new.json
+
+      - name: Register new task definition
+        id: register
+        run: |
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://task-definition-new.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "task_definition=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
+
+          echo "Registered:"
+          echo "$TASK_DEF_ARN"
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "${{ steps.ecs.outputs.service }}" \
+            --task-definition "${{ steps.register.outputs.task_definition }}"
+
+      - name: Wait for ECS deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "${{ steps.ecs.outputs.service }}"
+
+      - name: Deployment successful
+        run: |
+          echo "TradeCore deployed successfully."
+          echo "Image: $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
