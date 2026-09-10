@@ -56,7 +56,7 @@ jobs:
           docker build \
             -t tradecore-api:${{ github.sha }} \
             .
-
+ 
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
@@ -71,7 +71,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
 
       - name: Login to Amazon ECR
         if: github.event_name == 'push'
