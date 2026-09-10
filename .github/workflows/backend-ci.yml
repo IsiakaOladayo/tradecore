@@ -11,6 +11,7 @@ on:
       - develop
       - main
 
+# Required for GitHub OIDC authentication
 permissions:
   id-token: write
   contents: read
@@ -25,9 +26,11 @@ jobs:
         working-directory: ./tradecore/backend
 
     steps:
+      # 1. Get the source code
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. Install Node.js for the application's CI environment
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -35,17 +38,38 @@ jobs:
           cache: npm
           cache-dependency-path: tradecore/backend/package-lock.json
 
+      # 3. Install dependencies exactly from package-lock.json
       - name: Install dependencies
         run: npm ci
 
+      # 4. Run application tests
       - name: Run tests
         run: npm test
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          role-to-assume: arn:aws:iam::987292390922:role/tradecore-production-github-actions
-          aws-region: af-south-1
+      # 5. Build the production Docker image
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t tradecore-api:${{ github.sha }} \
+            .
 
+      # 6. Scan the image for vulnerabilities
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: tradecore-api:${{ github.sha }}
+          format: table
+          exit-code: "0"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      # 7. Authenticate GitHub Actions with AWS using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: af-south-1
+          role-to-assume: arn:aws:iam::987292390922:role/tradecore-production-github-actions
+
+      # 8. Verify that AWS authentication worked
       - name: Verify AWS identity
         run: aws sts get-caller-identity
