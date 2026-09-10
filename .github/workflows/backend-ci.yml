@@ -65,7 +65,7 @@ jobs:
 
       # 7. Authenticate GitHub Actions with AWS using OIDC
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: af-south-1
           role-to-assume: arn:aws:iam::987292390922:role/tradecore-production-github-actions
