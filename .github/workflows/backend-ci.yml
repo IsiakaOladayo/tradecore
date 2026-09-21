@@ -67,8 +67,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: af-south-1
-          role-to-assume: arn:aws:iam::987292390922:role/tradecore-production-github-actions
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
 
       # 8. Verify that AWS authentication worked
       - name: Verify AWS identity
