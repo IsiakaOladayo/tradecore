@@ -73,3 +73,16 @@ jobs:
       # 8. Verify that AWS authentication worked
       - name: Verify AWS identity
         run: aws sts get-caller-identity
+      # Login to ECR, build image and push to ECR
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        working-directory: ./tradecore/backend
+        env:
+          ECR_REGISTRY: 987292390922.dkr.ecr.af-south-1.amazonaws.com
+          ECR_REPOSITORY: tradecore-production
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
