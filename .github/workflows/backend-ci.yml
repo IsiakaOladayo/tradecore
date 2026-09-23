@@ -19,7 +19,7 @@ permissions:
 env:
   AWS_REGION: af-south-1
   ECR_REGISTRY: 987292390922.dkr.ecr.af-south-1.amazonaws.com
-  ECR_REPOSITORY: tradecore-production
+  ECR_REPOSITORY: tradecore-api
   ECS_CLUSTER: tradecore-production
   ECS_SERVICE: tradecore-production
   ECS_TASK_DEFINITION: tradecore-production
