@@ -135,7 +135,10 @@ jobs:
             --task-definition "$ECS_TASK_DEFINITION" \
             --region "$AWS_REGION" \
             --query taskDefinition \
-            --output json > task-definition.json
+            > task-definition.json
+          # Debugging check: ensures the file isn't empty and print it out
+          echo "=== Content of downloaded task definition ==="
+          cat task-definition.json
 
       # 4. Render the new Docker image into the task definition
       - name: Render new task definition
