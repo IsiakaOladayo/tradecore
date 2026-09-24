@@ -19,7 +19,7 @@ async function runMigration() {
     console.log('Successfully connected to RDS PostgreSQL.');
 
     // Read your SQL file (which was baked into the Docker image)
-    const sqlPath = path.join(__dirname, 'migrations', 'tradecore/database/schema.sql');
+    const sqlPath = path.join(__dirname, 'migrations', '../../../database/schema.sql');
     const sql = fs.readFileSync(sqlPath, 'utf8');
 
     // Execute the raw SQL against your RDS Database
