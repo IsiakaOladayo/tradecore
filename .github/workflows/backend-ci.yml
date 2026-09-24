@@ -49,11 +49,11 @@ jobs:
 
       # 3. Install dependencies
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefix backend
 
       # 4. Run tests
       - name: Run tests
-        run: npm test
+        run: npm test --prefix backend
 
       # 5. Build Docker image
       - name: Build Docker image
