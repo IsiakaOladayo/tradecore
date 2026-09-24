@@ -4,7 +4,7 @@ const helmet       = require('helmet');
 const cors         = require('cors');
 const morgan       = require('morgan');
 const rateLimit    = require('express-rate-limit');
-const logger       = require('./lib/logger');
+const logger       = require('./lib/logger'); 
 
 const authRoutes     = require('./routes/auth');
 const invoiceRoutes  = require('./routes/invoices');
@@ -15,9 +15,14 @@ const app = express();
 
 // ── Security ─────────────────────────────────────────────────────
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
-  credentials: true,
+
+  app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL,
+    'http://localhost:3001',
+    'https://develop.dpqtxdawh7h1c.amplifyapp.com'
+  ].filter(Boolean),
+  credentials: true
 }));
 
 // ── Rate limiting ─────────────────────────────────────────────────

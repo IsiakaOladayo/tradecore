@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+const { verifyToken } = require('../lib/tokens');
 
 module.exports = function authenticate(req, res, next) {
   const header = req.headers.authorization;
@@ -6,7 +6,7 @@ module.exports = function authenticate(req, res, next) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   try {
-    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET);
+    const payload = verifyToken(header.slice(7));
     req.business = payload;
     next();
   } catch {
