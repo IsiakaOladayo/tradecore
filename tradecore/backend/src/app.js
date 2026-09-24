@@ -16,8 +16,13 @@ const app = express();
 // ── Security ─────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
-  credentials: true,
+  app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL,
+    'http://localhost:3001',
+    'https://develop.dpqtxdawh7h1c.amplifyapp.com'
+  ].filter(Boolean),
+  credentials: true
 }));
 
 // ── Rate limiting ─────────────────────────────────────────────────
