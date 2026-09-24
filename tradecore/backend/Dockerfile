@@ -12,6 +12,7 @@ RUN addgroup -g 1001 -S nodejs \
 COPY --from=deps /app/node_modules ./node_modules
 COPY src ./src
 COPY package.json ./
+COPY ../database/schema.sql
 
 USER tradecore
 EXPOSE 4000
