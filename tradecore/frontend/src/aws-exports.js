@@ -30,7 +30,7 @@ const awsConfig = {
   API: {
     REST: {
       TradeCoreAPI: {
-        endpoint: 'REPLACE_WITH_ALB_URL', // e.g. https://api.tradecore.yourdomain.com
+        endpoint: 'tradecore-production-alb-243695114.af-south-1.elb.amazonaws.com', // e.g. https://api.tradecore.yourdomain.com
         region:   'af-south-1',
       }
     }
