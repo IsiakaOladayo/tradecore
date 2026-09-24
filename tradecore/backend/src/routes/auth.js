@@ -1,9 +1,9 @@
 const router  = require('express').Router();
 const bcrypt  = require('bcryptjs');
-const jwt     = require('jsonwebtoken');
 const db      = require('../lib/db');
 const logger  = require('../lib/logger');
 const auth    = require('../middleware/auth');
+const { signToken } = require('../lib/tokens');
 
 // POST /api/auth/register
 router.post('/register', async (req, res, next) => {
@@ -29,11 +29,7 @@ router.post('/register', async (req, res, next) => {
     );
 
     const business = result.rows[0];
-    const token = jwt.sign(
-      { businessId: business.id, email: business.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    const token = signToken({ businessId: business.id, email: business.email });
 
     logger.info('Business registered', { businessId: business.id, email });
     res.status(201).json({ token, business });
@@ -58,11 +54,7 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const token = jwt.sign(
-      { businessId: business.id, email: business.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    const token = signToken({ businessId: business.id, email: business.email });
 
     logger.info('Business login', { businessId: business.id });
     res.json({
