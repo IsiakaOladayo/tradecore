@@ -4,7 +4,7 @@ const helmet       = require('helmet');
 const cors         = require('cors');
 const morgan       = require('morgan');
 const rateLimit    = require('express-rate-limit');
-const logger       = require('./lib/logger');
+const logger       = require('./lib/logger'); 
 
 const authRoutes     = require('./routes/auth');
 const invoiceRoutes  = require('./routes/invoices');
