@@ -60,7 +60,7 @@ jobs:
         run: |
           docker build \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
-            ./backend
+            -f backend/Dockerfile .
 
       # 6. Scan Docker image
       - name: Scan Docker image with Trivy
